@@ -72,7 +72,7 @@
 
         <hr class="layui-border-green">
 
-        <h3 style="padding: 20px 0">Project List</h3>
+        <h3 style="padding: 20px 0">Active Projects</h3>
         <table class="layui-table">
             <colgroup>
                 <col width="150">
@@ -88,16 +88,18 @@
             </tr>
             </thead>
             <tbody id="tableBody">
+            {{range $index, $s := .}}
             <tr>
-                <td>{{.Name}}</td>
-                <td><a href="http://localhost:{{.Port}}" target="_blank">http://localhost:{{.Port}}</a></td>
-                <td>{{.Path}}</td>
+                <td>{{$s.Name}}</td>
+                <td><a style="color:#009688" href="http://localhost:{{$s.Port}}" target="_blank">http://localhost:{{$s.Port}}</a></td>
+                <td>{{$s.Path}}</td>
                 <td>
                     <button type="button" class="delBtn layui-btn layui-btn-sm layui-btn-danger">
                         <i class="layui-icon">&#xe640;</i>
                     </button>
                 </td>
             </tr>
+            {{end}}
             </tbody>
         </table>
     </div>

@@ -69,7 +69,7 @@ layui.use('form', function () {
 
 				$("#tableBody").append('<tr>\n' +
 					'<td>' + prjName + '</td>\n' +
-					'<td><a href="http://localhost:'+port+'" target="_blank">http://localhost:'+port+'</a></td>\n' +
+					'<td><a style="color:#009688" href="http://localhost:'+port+'" target="_blank">http://localhost:'+port+'</a></td>\n' +
 					'<td>' + path + '</td>\n' +
 					'<td>\n' +
 					' <button type="button" class="delBtn layui-btn layui-btn-sm layui-btn-danger">\n' +

@@ -6,78 +6,45 @@ import (
 	"html/template"
 	"io/fs"
 	"log"
-	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
-)
-
-type toolType int
-
-const (
-	pprof toolType = iota
-	trace
-	pprof2
-	invalidTool
 )
 
 //go:embed static/*
 var f embed.FS
 var pprofExePath, traceExePath string
-var shepherdInst = newShepherd()
 
-type (
-	shepherd struct {
-		lock  sync.Mutex
-		head *Sheep
-		tail *Sheep
+func main() {
+	welcome()
+	initGoToolPath()
+
+	http.Handle("/", &indexHandle{})
+	http.Handle("/static/", http.FileServer(http.FS(f)))
+	http.Handle("/api", shepherdInst)
+
+	ch := make(chan int)
+	go func() {
+		select {
+		case <- ch:
+		case <- time.After(time.Millisecond*300):
+			startHomePage() // only start home page when everything is ready.
+		}
+	}()
+
+	if err := http.ListenAndServe(":7777", nil); err != nil {
+		ch <- 1
+		log.Fatal(err)
 	}
-
-	Sheep struct {
-		next *Sheep
-		inst  *exec.Cmd // command instance of go tools
-		name  string    // project name
-		path1 string    // path of the first file
-		path2 string    // path of the second file, only needed when comparing two files
-		port  int       // assigned unique port for the tool
-	}
-)
-
-func newShepherd() *shepherd {
-	dummy := &Sheep{}
-	return &shepherd{
-		head: dummy,
-		tail: dummy,
-	}
-}
-
-func (s *shepherd) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	query := request.URL.Query()
-
-	// check op
-	var rsp string
-	switch query.Get("op") {
-	case "add":
-		rsp = s.add(query)
-	case "rmv":
-		rsp = s.rmv(query)
-	default:
-		rsp = "op not support"
-	}
-
-	writer.Write([]byte(rsp))
 }
 
 type indexHandle struct{}
 
-func (m *indexHandle) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (h *indexHandle) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	tmpl := template.New("index")
 	indexFile, err := f.ReadFile("static/index.html")
 	if err != nil {
@@ -111,23 +78,12 @@ func (m *indexHandle) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	tmpl.Execute(writer, allSheepHtml)
 }
 
-func main() {
-	initGoToolPath()
-
-	http.Handle("/static/", http.FileServer(http.FS(f)))
-	http.Handle("/", &indexHandle{})
-	http.Handle("/api", shepherdInst)
-
-	log.Fatal(http.ListenAndServe(":7777", nil))
-}
-
-// initGoToolPath tries to find the path for pprof and trace.
+// initGoToolPath find the path for pprof and trace.
 func initGoToolPath() {
 	toolPath := strings.TrimRight(strings.Replace(os.Getenv("GOROOT"), `\`, `/`, -1), "/") + "/pkg/tool/"
-	myToolPath := toolPath + runtime.GOOS + "_" + runtime.GOARCH
-	fmt.Println(myToolPath)
+	goToolPath := toolPath + runtime.GOOS + "_" + runtime.GOARCH
 
-	filepath.Walk(myToolPath, func(path string, info fs.FileInfo, err error) error {
+	filepath.Walk(goToolPath, func(path string, info fs.FileInfo, err error) error {
 		if strings.HasPrefix(info.Name(), "pprof") {
 			pprofExePath = path
 		} else if strings.HasPrefix(info.Name(), "trace") {
@@ -137,142 +93,33 @@ func initGoToolPath() {
 	})
 
 	if pprofExePath == "" {
-		fmt.Printf("cannot find executable tool: pprof!\n")
-		os.Exit(-1)
+		log.Fatalf("pprof not found in %v\n", goToolPath)
 	}
 
 	if traceExePath == "" {
-		fmt.Printf("cannot find executable tool: trace!\n")
-		os.Exit(-1)
+		log.Fatalf("trace not found in %v\n", goToolPath)
 	}
 }
 
-func runCmd(cmd string, args ...string) (*exec.Cmd, string) {
-	c := exec.Command(cmd, args...)
-	ch := make(chan string, 1)
-	go func() {
-		output, err := c.CombinedOutput()
-		if err != nil {
-			ch <- string(output)
-		}
-	}()
-
-	select {
-	case output := <-ch:
-		return nil, output
-	//	we assume that all bad cases of opening go tools return within one second.
-	case <-time.After(time.Second):
-		return c, ""
-	}
+func welcome() {
+	fmt.Println("\n  _____        ____   __                __                 __\n / ___/ ___   / __/  / /  ___    ___   / /  ___   ____ ___/ /\n/ (_ / / _ \\ _\\ \\   / _ \\/ -_)  / _ \\ / _ \\/ -_) / __// _  / \n\\___/  \\___//___/  /_//_/\\__/  / .__//_//_/\\__/ /_/   \\_,_/  \n                              /_/                            ")
+	fmt.Println("Welcome to GoShepherd!")
 }
 
-func purePath(path string) string {
-	path = strings.Replace(path, `"`, " ", -1)
-	path = strings.Replace(path, "`", " ", -1)
-	return strings.TrimSpace(path)
-}
-
-func (s *shepherd) add(v url.Values) string {
-	path1 := purePath(v.Get("path1"))
-	path2 := purePath(v.Get("path2"))
-
-	var cmdInst *exec.Cmd
-	var err string
-
-	randPort := getRandomPort()
-	if randPort == 0 {
-		return "port resource exhausted"
+func startHomePage() {
+	homepage := "http://127.0.0.1:7777"
+	commands := map[string]string{
+		"windows": "explorer",
+		"darwin":  "open",
+		"linux":   "xdg-open",
 	}
 
-	httpArgs := fmt.Sprintf("-http=127.0.0.1:%v", randPort)
-	switch v.Get("tool") {
-	case "0":
-		cmdInst, err = runCmd(pprofExePath, httpArgs, path1)
-	case "1":
-		cmdInst, err = runCmd(traceExePath, httpArgs, path1)
-	case "2":
-		cmdInst, err = runCmd(pprofExePath, httpArgs, "-base", path1, path2)
-	default:
-		fmt.Printf("invalid tool type, got: %v\n", v.Get("tool"))
-		return "invalid tool type"
-	}
-
-	if cmdInst == nil {
-		return err
-	}
-
-	s.addSheep(&Sheep{
-		inst:  cmdInst,
-		name:  v.Get("name"),
-		path1: path1,
-		path2: path2,
-		port:  randPort,
-	})
-
-	return strconv.Itoa(randPort)
-}
-
-func getRandomPort() int {
-	l, err := net.Listen("tcp", ":0")
-	if err != nil {
-		fmt.Printf("failed to get random port, err: %v\n", err)
-		return 0
-	}
-	defer l.Close()
-
-	a, ok := l.Addr().(*net.TCPAddr)
+	explorer, ok := commands[runtime.GOOS]
 	if !ok {
-		return 0
+		fmt.Println("Please visit home page manually: ", homepage)
+		return
 	}
+	fmt.Println("Opening home page: ", homepage)
 
-	return a.Port
-}
-
-func (s *shepherd) rmv(v url.Values) string {
-	port, err := strconv.Atoi(v.Get("port"))
-	if err != nil || port == 0 {
-		return "invalid port"
-	}
-	s.rmvSheep(port)
-	return "ok"
-}
-
-// addSheep should add new sheep with global unique port
-func (s *shepherd) addSheep(sheep *Sheep) {
-	s.lock.Lock()
-	s.lock.Unlock()
-	s.tail.next = sheep
-	s.tail = sheep
-
-}
-
-func (s *shepherd) rmvSheep(port int) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	prev := s.head
-	next := s.head.next
-	for next != nil {
-		if next.port != port {
-			prev = next
-			next = next.next
-			continue
-		}
-		prev.next = next.next
-		if next == s.tail {
-			s.tail = prev
-		}
-		break
-	}
-}
-
-func (s *shepherd) dumpSheep() []*Sheep {
-	allSheep := make([]*Sheep, 0, 0)
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	next := s.head.next
-	for next != nil {
-		allSheep = append(allSheep, next)
-		next = next.next
-	}
-	return allSheep
+	exec.Command(explorer, homepage).Run()
 }

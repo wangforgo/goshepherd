@@ -5,9 +5,7 @@
     <title>Go Shepherd</title>
     <link rel="stylesheet" href="static/layui/css/layui.css"></link>
     <style>
-        .hidden {
-            display: none;
-        }
+        .hidden {display: none;}
     </style>
 </head>
 
@@ -17,7 +15,13 @@
 <div class="middle"></div>
 <div class="layui-row">
     <div class="layui-col-lg8 layui-col-lg-offset2">
-        <h1 style="margin-top: 20px;margin-bottom: 20px; color: #666666">Go Shepherd</h1>
+        <div class="layui-row" style="margin-top:20px;margin-bottom:20px;">
+            <a href="https://github.com/wangforgo/goshepherd" target="_blank">
+                <span style="color: #009688; font-size: 24px; font-weight: bold; font-style: italic">Go Shepherd</span>
+                <span style="margin-left: 10px; font-style: italic; color: #aaa;">manage go tools easier.</span>
+            </a>
+        </div>
+
         <div class="layui-row">
             <form class="layui-form" action="">
                 <div class="layui-col-lg2">
@@ -34,7 +38,7 @@
                 <div class="layui-col-lg10">
                     <div class="layui-form-item">
                         <div class="layui-input-block" style="margin-left: 0">
-                            <input id="projectName" type="text" name="projectName" placeholder="[optional] a project name..." autocomplete="off" class="layui-input">
+                            <input id="projectName" type="text" name="projectName" placeholder="project name [optional]" autocomplete="off" class="layui-input">
                         </div>
                     </div>
                 </div>
@@ -51,7 +55,7 @@
                 <div class="layui-col-lg12 hidden" id="path2Input">
                     <div class="layui-form-item">
                         <div class="layui-input-block" style="margin-left: 0">
-                            <input id="path2" type="text" name="path2" lay-verify="" placeholder="please input the path of the second file to be opened..." autocomplete="off" class="layui-input">
+                            <input id="path2" type="text" name="path2" lay-verify="" placeholder="please input the path of the SECOND file to be opened..." autocomplete="off" class="layui-input">
                         </div>
                     </div>
                 </div>
@@ -72,7 +76,7 @@
 
         <hr class="layui-border-green">
 
-        <h3 style="padding: 20px 0">Active Projects</h3>
+        <h3 style="padding: 20px 0; font-style: italic">Active Projects</h3>
         <table class="layui-table">
             <colgroup>
                 <col width="150">
@@ -88,13 +92,14 @@
             </tr>
             </thead>
             <tbody id="tableBody">
+            {{$empty := ""}}
             {{range $index, $s := .}}
             <tr>
                 <td>{{$s.Name}}</td>
                 <td><a style="color:#009688" href="http://localhost:{{$s.Port}}" target="_blank">http://localhost:{{$s.Port}}</a></td>
-                <td>{{$s.Path}}</td>
+                <td><p>{{$s.Path1}}</p>{{if ne $s.Path2 $empty}} <p>{{$s.Path2}}</p> {{end}}</td>
                 <td>
-                    <button type="button" class="delBtn layui-btn layui-btn-sm layui-btn-danger">
+                    <button type="button" port={{$s.Port}} class="delBtn layui-btn layui-btn-sm layui-btn-danger">
                         <i class="layui-icon">&#xe640;</i>
                     </button>
                 </td>

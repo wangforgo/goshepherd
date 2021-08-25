@@ -13,13 +13,13 @@ layui.use('form', function () {
 		} else {
 			if (path2Input.hasClass("hidden") === false) {
 				path2Input.addClass("hidden");
-				$("#path2").attr("lay-verify", "").val("dummy");
+				$("#path2").attr("lay-verify", "").val("dummy-placeholder");
 				form.render();
 			}
 		}
 	});
 
-	// 监听提交
+	// submit form
 	form.on('submit(myForm)', function (data) {
 		if ($("#openBtn").hasClass("layui-btn-disabled")) {
 			return false;
@@ -29,8 +29,7 @@ layui.use('form', function () {
 		toolType = $("#tool").val();
 		prjName = $("#projectName").val();
 		path1 = $("#path1").val();
-		path2 = $("#path2").val();
-
+		path2 = $("#path2").val() ==="dummy-placeholder" ? "" : $("#path2").val()
 		$.ajax({
 			type: "get",
 			url: "http://localhost:7777/api",
@@ -42,12 +41,7 @@ layui.use('form', function () {
 			},
 			success: function (data) {
 				if (data === "") {
-					layer.alert("err", {
-						type: 0,
-						title: `Warning`,
-						content: "please check goshepherd...",
-						btn: `ok`,
-					});
+					alertCheckGoShepherd();
 					return false;
 				}
 
@@ -61,18 +55,18 @@ layui.use('form', function () {
 					return false;
 				}
 
-
-				path = path1
+				pathNode = '<td><p>'+path1+'</p>'
 				if (path2 !== "") {
-					path = path1 + path2 // todo: newline for path2
+					pathNode += '<p>'+path2+'</p>'
 				}
+				pathNode += '</td>'
 
 				$("#tableBody").append('<tr>\n' +
 					'<td>' + prjName + '</td>\n' +
 					'<td><a style="color:#009688" href="http://localhost:'+port+'" target="_blank">http://localhost:'+port+'</a></td>\n' +
-					'<td>' + path + '</td>\n' +
+					pathNode+
 					'<td>\n' +
-					' <button type="button" class="delBtn layui-btn layui-btn-sm layui-btn-danger">\n' +
+					' <button type="button" port='+port+' class="delBtn layui-btn layui-btn-sm layui-btn-danger">\n' +
 					' <i class="layui-icon">&#xe640;</i>\n' +
 					' </button>\n' +
 					'</td>\n' +
@@ -81,12 +75,7 @@ layui.use('form', function () {
 				return false;
 			},
 			error: function (data) {
-				var layer = layui.layer;
-				layer.alert("err", {
-					type: 0,
-					title: `Warning`,
-					content: `something is not working well`
-				})
+				alertCheckGoShepherd();
 				return false;
 			}
 		});
@@ -97,12 +86,26 @@ layui.use('form', function () {
 
 	// delete item
 	$("#tableBody").on("click",".delBtn", function () {
-		console.log("delete...");
+		$.ajax({
+			type: "get",
+			url: "http://localhost:7777/api",
+			data: {
+				op: "rmv",
+				port: $(this).attr("port"),
+			}
+		})
 		$(this).parent().parent().remove();
 	});
 });
 
-
+function alertCheckGoShepherd() {
+	var layer = layui.layer;
+	layer.alert("err", {
+		type: 0,
+		title: `Warning`,
+		content: `Oops...Seems that GoShepherd is not working well...Please check it!`
+	})
+}
 
 
 

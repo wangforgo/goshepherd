@@ -42,11 +42,11 @@ type (
 	}
 
 	Sheep struct {
-		inst  *exec.Cmd
-		name  string
-		path1 string
-		path2 string
-		port  int
+		inst  *exec.Cmd // command instance of go tools
+		name  string    // project name
+		path1 string    // path of the first file
+		path2 string    // path of the second file, only needed when comparing two files
+		port  int       // assigned port for the tool
 	}
 )
 
@@ -83,22 +83,20 @@ func (m *indexHandle) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	}
 
 	type SheepForHtml struct {
-		Name string
-		Port int
-		Path string
+		Name  string
+		Port  int
+		Path1 string
+		Path2 string
 	}
 
 	liveSheep := shepherdInst.allLiveSheep()
 	allSheepHtml := make([]SheepForHtml, len(liveSheep))
 	for i, s := range liveSheep {
-		path := s.path1
-		if s.path2 != "" {
-			path += "\n" + s.path2
-		}
 		allSheepHtml[i] = SheepForHtml{
-			Name: s.name,
-			Port: s.port,
-			Path: path,
+			Name:  s.name,
+			Port:  s.port,
+			Path1: s.path1,
+			Path2: s.path2,
 		}
 	}
 

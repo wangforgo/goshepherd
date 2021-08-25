@@ -31,24 +31,32 @@ const (
 //go:embed static/*
 var f embed.FS
 var pprofExePath, traceExePath string
-var shepherdInst = &shepherd{
-	sheep: make(map[int]*Sheep),
-}
+var shepherdInst = newShepherd()
 
 type (
 	shepherd struct {
 		lock  sync.Mutex
-		sheep map[int]*Sheep
+		head *Sheep
+		tail *Sheep
 	}
 
 	Sheep struct {
+		next *Sheep
 		inst  *exec.Cmd // command instance of go tools
 		name  string    // project name
 		path1 string    // path of the first file
 		path2 string    // path of the second file, only needed when comparing two files
-		port  int       // assigned port for the tool
+		port  int       // assigned unique port for the tool
 	}
 )
+
+func newShepherd() *shepherd {
+	dummy := &Sheep{}
+	return &shepherd{
+		head: dummy,
+		tail: dummy,
+	}
+}
 
 func (s *shepherd) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	query := request.URL.Query()
@@ -89,7 +97,7 @@ func (m *indexHandle) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 		Path2 string
 	}
 
-	liveSheep := shepherdInst.allLiveSheep()
+	liveSheep := shepherdInst.dumpSheep()
 	allSheepHtml := make([]SheepForHtml, len(liveSheep))
 	for i, s := range liveSheep {
 		allSheepHtml[i] = SheepForHtml{
@@ -164,16 +172,6 @@ func purePath(path string) string {
 	return strings.TrimSpace(path)
 }
 
-func (s *shepherd) allLiveSheep() []*Sheep {
-	allSheep := make([]*Sheep, 0, 0)
-	s.lock.Lock()
-	for _, v := range s.sheep {
-		allSheep = append(allSheep, v)
-	}
-	s.lock.Unlock()
-	return allSheep
-}
-
 func (s *shepherd) add(v url.Values) string {
 	path1 := purePath(v.Get("path1"))
 	path2 := purePath(v.Get("path2"))
@@ -203,17 +201,13 @@ func (s *shepherd) add(v url.Values) string {
 		return err
 	}
 
-	newSheep := &Sheep{
+	s.addSheep(&Sheep{
 		inst:  cmdInst,
 		name:  v.Get("name"),
 		path1: path1,
 		path2: path2,
 		port:  randPort,
-	}
-
-	s.lock.Lock()
-	s.sheep[randPort] = newSheep
-	s.lock.Unlock()
+	})
 
 	return strconv.Itoa(randPort)
 }
@@ -239,11 +233,46 @@ func (s *shepherd) rmv(v url.Values) string {
 	if err != nil || port == 0 {
 		return "invalid port"
 	}
+	s.rmvSheep(port)
+	return "ok"
+}
+
+// addSheep should add new sheep with global unique port
+func (s *shepherd) addSheep(sheep *Sheep) {
+	s.lock.Lock()
+	s.lock.Unlock()
+	s.tail.next = sheep
+	s.tail = sheep
+
+}
+
+func (s *shepherd) rmvSheep(port int) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	if c, ok := s.sheep[port]; ok && c != nil {
-		s.sheep[port].inst.Process.Kill()
+	prev := s.head
+	next := s.head.next
+	for next != nil {
+		if next.port != port {
+			prev = next
+			next = next.next
+			continue
+		}
+		prev.next = next.next
+		if next == s.tail {
+			s.tail = prev
+		}
+		break
 	}
-	delete(s.sheep, port)
-	return "ok"
+}
+
+func (s *shepherd) dumpSheep() []*Sheep {
+	allSheep := make([]*Sheep, 0, 0)
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	next := s.head.next
+	for next != nil {
+		allSheep = append(allSheep, next)
+		next = next.next
+	}
+	return allSheep
 }

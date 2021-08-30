@@ -32,7 +32,7 @@ layui.use('form', function () {
 		path2 = $("#path2").val() ==="dummy-placeholder" ? "" : $("#path2").val()
 		$.ajax({
 			type: "get",
-			url: "http://localhost:7777/api",
+			url: "http://127.0.0.1:7777/api",
 			data: {
 				op: "add",
 				tool: toolType,
@@ -63,7 +63,7 @@ layui.use('form', function () {
 
 				$("#tableBody").append('<tr>\n' +
 					'<td>' + prjName + '</td>\n' +
-					'<td><a style="color:#009688" href="http://localhost:'+port+'" target="_blank">http://localhost:'+port+'</a></td>\n' +
+					'<td><a style="color:#009688" href="http://127.0.0.1:'+port+'" target="_blank">http://127.0.0.1:'+port+'</a></td>\n' +
 					pathNode+
 					'<td>\n' +
 					' <button type="button" port='+port+' class="delBtn layui-btn layui-btn-sm layui-btn-danger">\n' +
@@ -88,7 +88,7 @@ layui.use('form', function () {
 	$("#tableBody").on("click",".delBtn", function () {
 		$.ajax({
 			type: "get",
-			url: "http://localhost:7777/api",
+			url: "http://127.0.0.1:7777/api",
 			data: {
 				op: "rmv",
 				port: $(this).attr("port"),

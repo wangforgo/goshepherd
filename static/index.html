@@ -96,7 +96,7 @@
             {{range $index, $s := .}}
             <tr>
                 <td>{{$s.Name}}</td>
-                <td><a style="color:#009688" href="http://localhost:{{$s.Port}}" target="_blank">http://localhost:{{$s.Port}}</a></td>
+                <td><a style="color:#009688" href="http://127.0.0.1:{{$s.Port}}" target="_blank">http://127.0.0.1:{{$s.Port}}</a></td>
                 <td><p>{{$s.Path1}}</p>{{if ne $s.Path2 $empty}} <p>{{$s.Path2}}</p> {{end}}</td>
                 <td>
                     <button type="button" port={{$s.Port}} class="delBtn layui-btn layui-btn-sm layui-btn-danger">

@@ -25,7 +25,7 @@ Luckily, we have `GoShepherd` now, it addresses the problems well mentioned abov
 1. Download the souce code and build it with Go version (>=`1.16`).
 
 2. Start the built execute `GoShepherd` bin.
-3. Open projects in the home page of `GoShepherd`: `localhost:7777`.
+3. Open projects in the home page of `GoShepherd`: `127.0.0.1:7777`.
 
 
 

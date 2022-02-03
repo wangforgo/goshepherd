@@ -17,13 +17,13 @@ var shepherdInst = newShepherd()
 
 type (
 	shepherd struct {
-		lock  sync.Mutex
+		lock sync.Mutex
 		head *Sheep
 		tail *Sheep
 	}
 
 	Sheep struct {
-		next *Sheep
+		next  *Sheep
 		inst  *exec.Cmd // command instance of go tools
 		name  string    // project name
 		path1 string    // path of the first file
@@ -56,7 +56,6 @@ func (s *shepherd) ServeHTTP(writer http.ResponseWriter, request *http.Request) 
 
 	writer.Write([]byte(rsp))
 }
-
 
 func (s *shepherd) add(v url.Values) string {
 	path1 := purePath(v.Get("path1"))
@@ -143,6 +142,7 @@ func (s *shepherd) rmvSheep(port int) {
 			next = next.next
 			continue
 		}
+		next.inst.Process.Kill()
 		prev.next = next.next
 		if next == s.tail {
 			s.tail = prev
@@ -162,7 +162,6 @@ func (s *shepherd) dumpSheep() []*Sheep {
 	}
 	return allSheep
 }
-
 
 func runCmd(cmd string, args ...string) (*exec.Cmd, string) {
 	c := exec.Command(cmd, args...)

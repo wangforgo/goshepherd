@@ -19,6 +19,8 @@ import (
 var f embed.FS
 var pprofExePath, traceExePath string
 
+const Port = 7777
+
 func main() {
 	welcome()
 	initGoToolPath()
@@ -36,7 +38,7 @@ func main() {
 		}
 	}()
 
-	if err := http.ListenAndServe(":7777", nil); err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf(":%v", Port), nil); err != nil {
 		ch <- 1
 		log.Fatal(err)
 	}
@@ -78,7 +80,7 @@ func (h *indexHandle) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	tmpl.Execute(writer, allSheepHtml)
 }
 
-// initGoToolPath find the path for pprof and trace.
+// initGoToolPath find the path for pprof and trace binaries.
 func initGoToolPath() {
 	toolPath := strings.TrimRight(strings.Replace(os.Getenv("GOROOT"), `\`, `/`, -1), "/") + "/pkg/tool/"
 	goToolPath := toolPath + runtime.GOOS + "_" + runtime.GOARCH
@@ -93,21 +95,23 @@ func initGoToolPath() {
 	})
 
 	if pprofExePath == "" {
-		log.Fatalf("pprof not found in %v\n", goToolPath)
+		log.Fatalf("pprof binary not found in %v\n", goToolPath)
 	}
 
 	if traceExePath == "" {
-		log.Fatalf("trace not found in %v\n", goToolPath)
+		log.Fatalf("trace binary not found in %v\n", goToolPath)
 	}
 }
 
 func welcome() {
+	// print logo
 	fmt.Println("\n  _____        ____   __                __                 __\n / ___/ ___   / __/  / /  ___    ___   / /  ___   ____ ___/ /\n/ (_ / / _ \\ _\\ \\   / _ \\/ -_)  / _ \\ / _ \\/ -_) / __// _  / \n\\___/  \\___//___/  /_//_/\\__/  / .__//_//_/\\__/ /_/   \\_,_/  \n                              /_/                            ")
+	fmt.Println("-------------------------------------------------------------")
 	fmt.Println("Welcome to GoShepherd!")
 }
 
 func startHomePage() {
-	homepage := "http://127.0.0.1:7777"
+	homepage := fmt.Sprintf("http://127.0.0.1:%v", Port)
 	commands := map[string]string{
 		"windows": "explorer",
 		"darwin":  "open",
